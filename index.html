@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Global Landmark Guessing Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      text-align: center;
+    }
+    #game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    #landmark-container {
+      margin: 20px;
+    }
+    #landmark-image {
+      max-width: 400px;
+      border: 2px solid #333;
+    }
+    #instructions, #feedback {
+      margin: 10px;
+      font-size: 20px;
+    }
+    #globe-container {
+      width: 600px;
+      height: 600px;
+      border: 1px solid #333;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <h1>Global Landmark Guessing Game</h1>
+    <div id="landmark-container">
+      <img id="landmark-image" src="" alt="Landmark Image">
+    </div>
+    <div id="instructions">Click on the globe where you think the landmark is located.</div>
+    <div id="feedback"></div>
+    <div id="globe-container"></div>
+  </div>
+
+  <!-- Three.js library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- OrbitControls for zooming and rotating the globe -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/controls/OrbitControls.js"></script>
+  <script>
+    // Landmark data: each landmark includes a name, an image URL, and its latitude/longitude.
+    const landmarks = [
+      {
+        name: "Eiffel Tower",
+        image: "https://upload.wikimedia.org/wikipedia/commons/a/af/Tour_Eiffel_Wikimedia_Commons.jpg",
+        lat: 48.8584,
+        lon: 2.2945
+      },
+      {
+        name: "Statue of Liberty",
+        image: "https://upload.wikimedia.org/wikipedia/commons/a/a1/Statue_of_Liberty_7.jpg",
+        lat: 40.6892,
+        lon: -74.0445
+      },
+      {
+        name: "Great Wall of China",
+        image: "https://upload.wikimedia.org/wikipedia/commons/1/10/Mutianyu_Great_Wall.jpg",
+        lat: 40.4319,
+        lon: 116.5704
+      },
+      {
+        name: "Pyramids of Giza",
+        image: "https://upload.wikimedia.org/wikipedia/commons/e/e3/Kheops-Pyramid.jpg",
+        lat: 29.9792,
+        lon: 31.1342
+      },
+      {
+        name: "Sydney Opera House",
+        image: "https://upload.wikimedia.org/wikipedia/commons/3/3e/Sydney_Opera_House_-_Dec_2008.jpg",
+        lat: -33.8568,
+        lon: 151.2153
+      }
+    ];
+    
+    let currentLandmarkIndex = 0;
+    const feedbackDiv = document.getElementById("feedback");
+    const landmarkImage = document.getElementById("landmark-image");
+
+    // Function to load the current landmark's image.
+    function loadLandmark() {
+      if (currentLandmarkIndex < landmarks.length) {
+        const landmark = landmarks[currentLandmarkIndex];
+        landmarkImage.src = landmark.image;
+        feedbackDiv.textContent = "";
+      } else {
+        feedbackDiv.textContent = "Game Over! Thanks for playing.";
+      }
+    }
+
+    // --- Three.js Scene Setup ---
+    const scene = new THREE.Scene();
+    const width = 600, height = 600;
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(width, height);
+    document.getElementById("globe-container").appendChild(renderer.domElement);
+
+    // Create a perspective camera.
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    camera.position.set(0, 0, 15);
+
+    // Add an ambient light.
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+    scene.add(ambientLight);
+
+    // Create the globe as a sphere.
+    const globeRadius = 5;
+    const sphereGeometry = new THREE.SphereGeometry(globeRadius, 64, 64);
+    const textureLoader = new THREE.TextureLoader();
+    const earthTexture = textureLoader.load("https://threejsfundamentals.org/threejs/resources/images/earth-day.jpg");
+    const sphereMaterial = new THREE.MeshPhongMaterial({ map: earthTexture });
+    const globe = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    scene.add(globe);
+
+    // Enable user interaction: rotate and zoom the globe.
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.25;
+    controls.minDistance = 7;
+    controls.maxDistance = 20;
+
+    // Raycaster and mouse vector for detecting user clicks.
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    // Convert a point on the globe to latitude and longitude (in degrees).
+    function pointToLatLon(point) {
+      const lat = Math.asin(point.y / globeRadius) * (180 / Math.PI);
+      let lon = Math.atan2(point.z, point.x) * (180 / Math.PI);
+      if (lon > 180) lon -= 360;
+      if (lon < -180) lon += 360;
+      return { lat, lon };
+    }
+
+    // Haversine formula to compute the great-circle distance between two points.
+    function haversine(lat1, lon1, lat2, lon2) {
+      const R = 6371; // Earth radius in km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    // Variables to store marker objects.
+    let guessMarker = null;
+    let correctMarker = null;
+
+    // Function to add a small sphere marker at a given position.
+    function addMarker(position, color = 0xff0000) {
+      const markerGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+      const markerMaterial = new THREE.MeshBasicMaterial({ color });
+      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+      marker.position.copy(position);
+      scene.add(marker);
+      return marker;
+    }
+
+    // Handle click events on the globe.
+    renderer.domElement.addEventListener("click", function(event) {
+      if (currentLandmarkIndex >= landmarks.length) return; // Game over
+      
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(globe);
+      
+      if (intersects.length > 0) {
+        const point = intersects[0].point;
+        const guessLatLon = pointToLatLon(point);
+        const landmark = landmarks[currentLandmarkIndex];
+        const distanceError = haversine(guessLatLon.lat, guessLatLon.lon, landmark.lat, landmark.lon);
+        
+        feedbackDiv.textContent = `You were off by ${distanceError.toFixed(2)} km! (${landmark.name})`;
+        
+        // Remove any previous markers.
+        if (guessMarker) scene.remove(guessMarker);
+        if (correctMarker) scene.remove(correctMarker);
+        guessMarker = addMarker(point, 0xff0000);
+        
+        // Compute the correct marker position on the globe.
+        // Convert landmark lat/lon to spherical coordinates.
+        const phi = (90 - landmark.lat) * (Math.PI / 180);
+        const theta = (landmark.lon + 180) * (Math.PI / 180);
+        const correctPos = new THREE.Vector3();
+        correctPos.x = globeRadius * Math.sin(phi) * Math.cos(theta);
+        correctPos.y = globeRadius * Math.cos(phi);
+        correctPos.z = globeRadius * Math.sin(phi) * Math.sin(theta);
+        correctMarker = addMarker(correctPos, 0x00ff00);
+        
+        // Proceed to the next landmark after a short delay.
+        setTimeout(function() {
+          currentLandmarkIndex++;
+          loadLandmark();
+          if (guessMarker) { scene.remove(guessMarker); guessMarker = null; }
+          if (correctMarker) { scene.remove(correctMarker); correctMarker = null; }
+        }, 3000);
+      }
+    });
+
+    // Animation loop.
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Start the game by loading the first landmark.
+    loadLandmark();
+  </script>
+</body>
+</html>
