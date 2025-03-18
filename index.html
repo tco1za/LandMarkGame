@@ -48,7 +48,7 @@
   <!-- Three.js library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <!-- OrbitControls for zooming and rotating the globe -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script>
     // Landmark data: each landmark includes a name, an image URL, and its latitude/longitude.
     const landmarks = [
@@ -124,7 +124,7 @@
     scene.add(globe);
 
     // Enable user interaction: rotate and zoom the globe.
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.25;
     controls.minDistance = 7;
