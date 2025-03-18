@@ -118,7 +118,7 @@
     const globeRadius = 5;
     const sphereGeometry = new THREE.SphereGeometry(globeRadius, 64, 64);
     const textureLoader = new THREE.TextureLoader();
-    const earthTexture = textureLoader.load("https://threejsfundamentals.org/threejs/resources/images/earth-day.jpg");
+    const earthTexture = textureLoader.load("https://tco1za.github.io/LandMarkGame/earth.png");
     const sphereMaterial = new THREE.MeshPhongMaterial({ map: earthTexture });
     const globe = new THREE.Mesh(sphereGeometry, sphereMaterial);
     scene.add(globe);
