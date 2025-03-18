@@ -54,7 +54,7 @@
     const landmarks = [
       {
         name: "Eiffel Tower",
-        image: "https://tco1za.github.io/LandMarkGame/eiffel.jpg",
+        image: "eiffel.jpg",
         lat: 48.8584,
         lon: 2.2945
       },
@@ -118,7 +118,7 @@
     const globeRadius = 5;
     const sphereGeometry = new THREE.SphereGeometry(globeRadius, 64, 64);
     const textureLoader = new THREE.TextureLoader();
-    const earthTexture = textureLoader.load("https://tco1za.github.io/LandMarkGame/earth.png");
+    const earthTexture = textureLoader.load("earth.png");
     const sphereMaterial = new THREE.MeshPhongMaterial({ map: earthTexture });
     const globe = new THREE.Mesh(sphereGeometry, sphereMaterial);
     scene.add(globe);
