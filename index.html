@@ -45,16 +45,16 @@
     <div id="globe-container"></div>
   </div>
 
-  <!-- Three.js library -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-  <!-- OrbitControls for zooming and rotating the globe -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-  <script>
-    // Landmark data: each landmark includes a name, an image URL, and its latitude/longitude.
+  <!-- Use module imports for Three.js and OrbitControls -->
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js';
+    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js';
+
+    // Landmark data: each landmark includes a name, a local image file, and its latitude/longitude.
     const landmarks = [
       {
         name: "Eiffel Tower",
-        image: "eiffel.jpg",
+        image: "eiffel.jpg", // Make sure this file is in the same GitHub directory
         lat: 48.8584,
         lon: 2.2945
       },
@@ -118,6 +118,7 @@
     const globeRadius = 5;
     const sphereGeometry = new THREE.SphereGeometry(globeRadius, 64, 64);
     const textureLoader = new THREE.TextureLoader();
+    // Load the local texture file for the globe (earth.png) from the same directory.
     const earthTexture = textureLoader.load("earth.png");
     const sphereMaterial = new THREE.MeshPhongMaterial({ map: earthTexture });
     const globe = new THREE.Mesh(sphereGeometry, sphereMaterial);
